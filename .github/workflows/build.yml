@@ -8,21 +8,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Zipni ochish
+        run: |
+          ZIP=$(ls *.zip | head -1)
+          echo "Zip: $ZIP"
+          mkdir -p app
+          unzip -o "$ZIP" -d app
+          PKG=$(find app -name package.json -not -path '*/node_modules/*' | head -1)
+          echo "APP_DIR=$(dirname "$PKG")" >> $GITHUB_ENV
+          ls -la "$(dirname "$PKG")"
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
+
       - name: Install
+        working-directory: ${{ env.APP_DIR }}
         run: npm install
+
       - name: Add Android
+        working-directory: ${{ env.APP_DIR }}
         run: npx cap add android && npx cap sync android
+
       - name: Build debug APK
-        working-directory: android
+        working-directory: ${{ env.APP_DIR }}/android
         run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+
       - uses: actions/upload-artifact@v4
         with:
           name: VideoGen-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ env.APP_DIR }}/android/app/build/outputs/apk/debug/app-debug.apk
